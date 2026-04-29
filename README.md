@@ -21,7 +21,7 @@ npm run preview:pages
 1. 仓库 **Settings → Pages → Build and deployment**：Source 选择 **GitHub Actions**。
 2. 将含 `.github/workflows/pages.yml` 的分支合并进默认分支后，工作流会把 `docs/` 部署为站点根目录。
 
-若你的用户名/仓库名与 `https://zhiqiuyao.github.io/news/` 不一致，请在 `package.json` 的 `homepage` 中改成自己的 Pages URL。
+默认 Pages URL 见 `package.json` 的 `homepage`；若你的 Fork 用户名不同，请改成 `https://<user>.github.io/news/`。
 
 ## 原始后端（可选）
 

@@ -19,7 +19,7 @@
   "bugs": {
     "url": "https://github.com/zhiqiuyao/news/issues"
   },
-  "homepage": "https://zhiqiuyao.github.io/news/",
+  "homepage": "https://allen2dev.github.io/news/",
   "dependencies": {
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "^1.15.2",
