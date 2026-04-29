@@ -6,7 +6,7 @@
 
 - 打开路径：`docs/index.html`（线上为站点根路径）。
 - 设计：深色极光背景、玻璃拟态卡片、多分类 Tab、搜索与刷新。
-- 数据：优先请求 [rss2json](https://rss2json.com/)；若某源返回 error（如部分 Reuters 源），则通过公开 CORS 代理拉取 **原始 RSS/Atom** 并在浏览器内用 `DOMParser` 解析，因此仍可在应用内阅读图文。
+- 数据：先经 **CORS 代理** 拉取 **原始 RSS/Atom** 并在浏览器内 `DOMParser` 解析（不依赖 [rss2json](https://rss2json.com/)，避免 422；代理列表含 `corsproxy.io`、`codetabs`、`thingproxy`，`allorigins` 仅作末位备选）。若仍无条目，再尝试 rss2json。公开代理在部分地区可能不稳定，长期可换自建反代。
 
 ### 本地预览
 

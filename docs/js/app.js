@@ -76,27 +76,59 @@ function parseRss2Json(data) {
   return null;
 }
 
+/** Order matters: rss2json often returns 422 for Reuters etc.; allorigins often 522 — try stable proxies first. */
+const PROXY_BUILDERS = [
+  (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  (u) =>
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  (u) =>
+    `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(u)}`,
+  (u) =>
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+];
+
+const FETCH_TIMEOUT_MS = 14_000;
+
+async function fetchWithTimeout(url) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, {
+      cache: "no-store",
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 async function fetchTextViaProxies(feedUrl) {
-  const builders = [
-    (u) =>
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-  ];
   let lastErr;
-  for (const build of builders) {
+  for (const build of PROXY_BUILDERS) {
     try {
-      const res = await fetch(build(feedUrl), { cache: "no-store" });
+      const res = await fetchWithTimeout(build(feedUrl));
       if (!res.ok) {
         lastErr = new Error(`HTTP ${res.status}`);
         continue;
       }
       const text = await res.text();
-      if (text && text.trim().length > 80) return text;
+      const trimmed = text?.trim() || "";
+      if (trimmed.length > 80 && looksLikeFeed(trimmed)) return trimmed;
+      lastErr = new Error("short or non-feed response");
     } catch (e) {
       lastErr = e;
     }
   }
-  throw lastErr || new Error("proxy fetch failed");
+  throw lastErr || new Error("all CORS proxies failed");
+}
+
+function looksLikeFeed(text) {
+  const head = text.slice(0, 800).toLowerCase();
+  return (
+    head.includes("<rss") ||
+    head.includes("<feed") ||
+    head.includes("<?xml")
+  );
 }
 
 function textFromEl(el) {
@@ -191,28 +223,37 @@ function parseFeedXml(xmlText, source) {
   return parseRssChannel(doc, source);
 }
 
-async function fetchFeedXmlFallback(feed) {
-  const xmlText = await fetchTextViaProxies(feed.url);
-  return parseFeedXml(xmlText, feed.source);
-}
-
+/**
+ * Prefer raw XML through CORS proxies: rss2json often returns 422; allorigins can 522.
+ * rss2json is only a secondary path when proxy+parse yields no items.
+ */
 async function fetchFeed(feed) {
   try {
-    const res = await fetch(rssUrl(feed.url), { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const xmlText = await fetchTextViaProxies(feed.url);
+    const parsed = parseFeedXml(xmlText, feed.source);
+    if (parsed.length > 0) return parsed;
+  } catch (e1) {
+    console.warn(
+      `[Pulse] raw XML via proxy failed: ${feed.source}`,
+      e1?.message || e1
+    );
+  }
+
+  try {
+    const res = await fetchWithTimeout(rssUrl(feed.url));
     const data = await res.json();
     const items = parseRss2Json(data);
-    if (!items) throw new Error(data?.message || "rss2json error");
-    return items.map((item) => normalizeItem(item, feed.source));
-  } catch (e1) {
-    console.warn(`[Pulse] rss2json failed for ${feed.source}, trying XML proxy`, e1?.message || e1);
-    try {
-      return await fetchFeedXmlFallback(feed);
-    } catch (e2) {
-      console.warn(`[Pulse] XML fallback failed for ${feed.source}`, e2?.message || e2);
-      return [];
-    }
+    if (items?.length)
+      return items.map((item) => normalizeItem(item, feed.source));
+    console.warn(
+      `[Pulse] rss2json no items: ${feed.source}`,
+      data?.message || ""
+    );
+  } catch (e2) {
+    console.warn(`[Pulse] rss2json failed: ${feed.source}`, e2?.message || e2);
   }
+
+  return [];
 }
 
 function stripHtml(html) {
