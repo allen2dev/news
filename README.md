@@ -1,28 +1,36 @@
 # news
 
-一个新闻网站：仓库根目录保留原有的 Express + Angular 后台示例；**静态新闻聚合展示**位于 `docs/`，用于部署到 **GitHub Pages**。
+仓库包含：**Pulse**（`web/`）— 面向 GitHub Pages 的开发者 RSS 阅读器；以及可选的旧版 **Express + Angular** 示例（`server.js`、`public/`）。
 
-## GitHub Pages 静态站点（Pulse）
+## Pulse（Vite + React + TypeScript）
 
-- 仅 **开发者** RSS：GitHub Blog、Dev.to、CSS-Tricks（`docs/js/app.js` 中 `FEEDS`）。
-- 新闻详情在 **模态框** 中展示；打开/关闭使用 **View Transitions API**（`document.startViewTransition` + 命名过渡 `modal-backdrop` / `modal-dialog`），不支持的浏览器会立即切换无动画。
-- 数据拉取：先 CORS 代理 + 本地解析 XML，失败再试 rss2json（见 `docs/js/app.js`）。
+- **技术栈**：Vite 6、React 19、TypeScript、Tailwind CSS、Radix Dialog、Lucide、dOMPurify。
+- **功能**：开发者 RSS（GitHub Blog、Dev.to、CSS-Tricks）、搜索、明暗主题、卡片网格、**Radix 模态详情** + **View Transitions API**（打开/关闭配合 `flushSync`）。
+- **数据**：先经 CORS 代理拉取 XML 并解析，失败再试 rss2json（见 `web/src/lib/rss.ts`）。
 
-### 本地预览
+### 本地开发
 
 ```bash
-npm run preview:pages
+cd web
+npm install
+npm run dev
 ```
 
-浏览器访问 `http://localhost:4173`。
+生产构建（含 GitHub Pages 子路径 `/news/`）：
 
-### 启用 Pages
+```bash
+cd web
+GITHUB_ACTIONS=true npm run build
+```
 
-1. 仓库 **Settings → Pages → Build and deployment**：Source 选择 **GitHub Actions**。
-2. 将含 `.github/workflows/pages.yml` 的分支合并进默认分支后，工作流会把 `docs/` 部署为站点根目录。
+产物在 `web/dist/`。
 
-默认 Pages URL 见 `package.json` 的 `homepage`；若你的 Fork 用户名不同，请改成 `https://<user>.github.io/news/`。
+### GitHub Pages
+
+工作流 `.github/workflows/pages.yml` 在 `web/` 执行 `npm ci && npm run build`，上传 **`web/dist`**。请在仓库 **Settings → Pages** 中选择 **GitHub Actions** 作为来源。
+
+线上地址见根目录 `package.json` 的 `homepage`（默认可为 `https://allen2dev.github.io/news/`）。
 
 ## 原始后端（可选）
 
-包含前台展示新闻、后台添加修改新闻的 Node 示例，入口见 `server.js` 与 `public/`。
+Node 示例入口：`server.js` 与 `public/`。

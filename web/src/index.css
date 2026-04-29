@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 98%;
+    --foreground: 240 10% 6%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 6%;
+    --muted: 240 5% 92%;
+    --muted-foreground: 240 4% 45%;
+    --accent: 263 70% 58%;
+    --accent-foreground: 0 0% 100%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 263 70% 58%;
+    --radius: 1rem;
+  }
+
+  .dark {
+    --background: 240 12% 6%;
+    --foreground: 210 20% 96%;
+    --card: 240 11% 10%;
+    --card-foreground: 210 20% 96%;
+    --muted: 240 8% 16%;
+    --muted-foreground: 215 14% 58%;
+    --accent: 187 92% 42%;
+    --accent-foreground: 240 12% 6%;
+    --border: 240 8% 18%;
+    --input: 240 8% 18%;
+    --ring: 187 92% 50%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply min-h-dvh bg-background font-sans text-foreground antialiased;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* View Transitions (modal) */
+::view-transition-old(article-backdrop) {
+  animation: vt-fade-out 0.25s ease-out both;
+}
+::view-transition-new(article-backdrop) {
+  animation: vt-fade-in 0.25s ease-out both;
+}
+::view-transition-old(article-panel) {
+  animation: vt-panel-out 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+::view-transition-new(article-panel) {
+  animation: vt-panel-in 0.35s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+}
+@keyframes vt-panel-out {
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+@keyframes fadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

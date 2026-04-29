@@ -1,19 +1,19 @@
 {
   "name": "news",
-  "version": "1.0.0",
-  "description": "news website",
-  "main": "index.js",
+  "version": "2.0.0",
+  "description": "Pulse developer news reader + legacy Express demo",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "preview:pages": "npx --yes serve docs -p 4173"
+    "test": "echo \"No root tests\" && exit 0",
+    "dev": "npm run dev --prefix web",
+    "build": "npm run build --prefix web",
+    "preview": "npm run preview --prefix web"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/zhiqiuyao/news.git"
   },
-  "keywords": [
-    "news"
-  ],
+  "keywords": ["news", "rss", "pulse"],
   "author": "Thanos",
   "license": "MIT",
   "bugs": {
