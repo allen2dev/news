@@ -1,13 +1,15 @@
 /**
  * Pulse — static news aggregator for GitHub Pages
- * Fetches public RSS via rss2json API (browser CORS friendly).
+ * Primary: rss2json API; fallback: CORS proxy + DOMParser (fixes feeds rss2json rejects, e.g. Reuters).
  */
 import DOMPurify from "https://cdn.jsdelivr.net/npm/dompurify@3.1.6/+esm";
 
 const RSS2JSON = "https://api.rss2json.com/v1/api.json";
 const DETAIL_KEY = "pulse-article";
+const STORAGE_PREFIX = "pulse-item:";
 const SKELETON_COUNT = 8;
 
+/** Optional raw RSS when rss2json fails (Reuters often fails there). */
 const FEEDS = {
   tech: [
     { source: "Hacker News", url: "https://news.ycombinator.com/rss" },
@@ -16,8 +18,11 @@ const FEEDS = {
   ],
   world: [
     { source: "BBC World", url: "https://feeds.bbci.co.uk/news/world/rss.xml" },
-    /* Reuters direct RSS often fails in rss2json; Guardian World is a stable alternative */
     { source: "The Guardian World", url: "https://www.theguardian.com/world/rss" },
+    {
+      source: "Reuters World",
+      url: "https://feeds.reuters.com/Reuters/worldNews",
+    },
     { source: "NPR News", url: "https://feeds.npr.org/1001/rss.xml" },
   ],
   dev: [
@@ -26,6 +31,8 @@ const FEEDS = {
     { source: "CSS-Tricks", url: "https://css-tricks.com/feed/" },
   ],
 };
+
+const CONTENT_NS = "http://purl.org/rss/1.0/modules/content/";
 
 let state = {
   category: "all",
@@ -69,16 +76,143 @@ function parseRss2Json(data) {
   return null;
 }
 
-async function fetchFeed({ source, url }) {
-  const res = await fetch(rssUrl(url), { cache: "no-store" });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  const items = parseRss2Json(data);
-  if (!items) {
-    const msg = data?.message || "Invalid feed response";
-    throw new Error(msg);
+async function fetchTextViaProxies(feedUrl) {
+  const builders = [
+    (u) =>
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  ];
+  let lastErr;
+  for (const build of builders) {
+    try {
+      const res = await fetch(build(feedUrl), { cache: "no-store" });
+      if (!res.ok) {
+        lastErr = new Error(`HTTP ${res.status}`);
+        continue;
+      }
+      const text = await res.text();
+      if (text && text.trim().length > 80) return text;
+    } catch (e) {
+      lastErr = e;
+    }
   }
-  return items.map((item) => normalizeItem(item, source));
+  throw lastErr || new Error("proxy fetch failed");
+}
+
+function textFromEl(el) {
+  return el?.textContent?.trim() || "";
+}
+
+function getContentEncoded(itemEl) {
+  const list = itemEl.getElementsByTagNameNS(CONTENT_NS, "encoded");
+  if (list.length) return list[0].innerHTML || textFromEl(list[0]) || "";
+  const any = itemEl.querySelector("*|encoded");
+  if (any && any.namespaceURI?.includes("content")) return any.innerHTML || "";
+  return "";
+}
+
+function parseRssChannel(doc, source) {
+  const itemEls = doc.querySelectorAll("channel > item, rss channel > item");
+  const out = [];
+  itemEls.forEach((itemEl) => {
+    const title = textFromEl(itemEl.querySelector("title")) || "Untitled";
+    const linkEl = itemEl.querySelector("link");
+    let link =
+      textFromEl(linkEl) ||
+      linkEl?.getAttribute?.("href") ||
+      textFromEl(itemEl.querySelector("guid")) ||
+      "#";
+    const pub =
+      textFromEl(itemEl.querySelector("pubDate")) ||
+      textFromEl(itemEl.querySelector("published")) ||
+      textFromEl(itemEl.querySelector("updated"));
+    const desc =
+      itemEl.querySelector("description")?.innerHTML ||
+      textFromEl(itemEl.querySelector("description")) ||
+      "";
+    const encoded = getContentEncoded(itemEl);
+    const rawHtml = encoded || desc;
+    out.push(
+      normalizeItem(
+        {
+          title,
+          link,
+          description: rawHtml,
+          content: encoded || "",
+          pubDate: pub || undefined,
+        },
+        source
+      )
+    );
+  });
+  return out;
+}
+
+function parseAtomFeed(doc, source) {
+  const entries = doc.querySelectorAll("feed > entry");
+  const out = [];
+  entries.forEach((entry) => {
+    const title = textFromEl(entry.querySelector("title")) || "Untitled";
+    const linkEl =
+      entry.querySelector('link[rel="alternate"]') ||
+      entry.querySelector("link");
+    let link =
+      linkEl?.getAttribute?.("href") || textFromEl(linkEl) || "#";
+    const pub =
+      textFromEl(entry.querySelector("published")) ||
+      textFromEl(entry.querySelector("updated"));
+    const summary = entry.querySelector("summary")?.innerHTML || "";
+    const contentEl =
+      entry.querySelector("content") || entry.querySelector("summary");
+    const rawHtml = contentEl?.innerHTML || summary || "";
+    out.push(
+      normalizeItem(
+        {
+          title,
+          link,
+          description: rawHtml,
+          content: rawHtml,
+          pubDate: pub || undefined,
+        },
+        source
+      )
+    );
+  });
+  return out;
+}
+
+function parseFeedXml(xmlText, source) {
+  const doc = new DOMParser().parseFromString(xmlText, "application/xml");
+  if (doc.querySelector("parsererror")) {
+    throw new Error("XML parse error");
+  }
+  const root = doc.documentElement?.localName?.toLowerCase();
+  if (root === "feed") return parseAtomFeed(doc, source);
+  return parseRssChannel(doc, source);
+}
+
+async function fetchFeedXmlFallback(feed) {
+  const xmlText = await fetchTextViaProxies(feed.url);
+  return parseFeedXml(xmlText, feed.source);
+}
+
+async function fetchFeed(feed) {
+  try {
+    const res = await fetch(rssUrl(feed.url), { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const items = parseRss2Json(data);
+    if (!items) throw new Error(data?.message || "rss2json error");
+    return items.map((item) => normalizeItem(item, feed.source));
+  } catch (e1) {
+    console.warn(`[Pulse] rss2json failed for ${feed.source}, trying XML proxy`, e1?.message || e1);
+    try {
+      return await fetchFeedXmlFallback(feed);
+    } catch (e2) {
+      console.warn(`[Pulse] XML fallback failed for ${feed.source}`, e2?.message || e2);
+      return [];
+    }
+  }
 }
 
 function stripHtml(html) {
@@ -99,7 +233,11 @@ function firstImageFromHtml(html) {
 function normalizeItem(item, source) {
   const link = item.link || item.guid || "#";
   const title = stripHtml(item.title) || "Untitled";
-  const rawHtml = item.content || item.description || "";
+  const rawHtml =
+    item.content ||
+    item["content:encoded"] ||
+    item.description ||
+    "";
   const excerpt = stripHtml(rawHtml).slice(0, 280) || "";
   const thumb =
     item.thumbnail ||
@@ -120,7 +258,7 @@ function normalizeItem(item, source) {
     link,
     excerpt,
     thumb,
-    html: rawHtml,
+    html: typeof rawHtml === "string" ? rawHtml : "",
     ts: Number.isFinite(ts) ? ts : Date.now(),
   };
 }
@@ -145,23 +283,41 @@ function dedupe(items) {
   return out;
 }
 
+/** Persist article so refresh + deep link still opens in-app reader. */
+function persistArticle(item) {
+  try {
+    localStorage.setItem(STORAGE_PREFIX + item.id, JSON.stringify(item));
+  } catch (e) {
+    console.warn("[Pulse] localStorage persist failed", e);
+  }
+}
+
+function loadPersistedArticle(id) {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + id);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    return o && o.id === id ? o : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function loadFeeds(category) {
   const keys = category === "all" ? ["tech", "world", "dev"] : [category];
   const tasks = [];
   for (const k of keys) {
     for (const f of FEEDS[k] || []) {
-      tasks.push(
-        fetchFeed(f).catch((err) => {
-          console.warn(`[Pulse] feed skip: ${f.source}`, err?.message || err);
-          return [];
-        })
-      );
+      tasks.push(fetchFeed(f));
     }
   }
   const chunks = await Promise.all(tasks);
   let merged = chunks.flat();
   merged = dedupe(merged);
   merged.sort((a, b) => b.ts - a.ts);
+  for (const it of merged.slice(0, 150)) {
+    persistArticle(it);
+  }
   return merged;
 }
 
@@ -234,6 +390,12 @@ function renderCardThumb(item) {
   return `<div class="card-thumb"><img src="${safeSrc}" alt="${alt}" loading="lazy" decoding="async" /></div>`;
 }
 
+function openArticle(item) {
+  stashArticle(item);
+  persistArticle(item);
+  window.location.hash = `#/article/${item.id}`;
+}
+
 function render() {
   const filtered = state.items.filter(matchesFilter);
   grid.innerHTML = "";
@@ -246,7 +408,6 @@ function render() {
     const card = document.createElement("article");
     card.className = "card" + (item.thumb ? " card--thumb" : "");
     card.style.animationDelay = `${Math.min(i * 0.04, 0.6)}s`;
-    const detailHref = `#/article/${item.id}`;
     card.innerHTML = `
       ${renderCardThumb(item)}
       <div class="card-inner">
@@ -254,25 +415,20 @@ function render() {
           <span class="source-pill">${escapeHtml(item.source)}</span>
           <time class="time" datetime="${new Date(item.ts).toISOString()}">${formatTime(item.ts)}</time>
         </div>
-        <h2 class="card-title"><a href="${detailHref}">${escapeHtml(item.title)}</a></h2>
+        <h2 class="card-title"><button type="button" class="card-title-btn">${escapeHtml(item.title)}</button></h2>
         <p class="card-excerpt">${escapeHtml(item.excerpt || "—")}</p>
         <div class="card-footer">
-          <a class="read-link" href="${detailHref}">
+          <button type="button" class="read-link">
             阅读全文
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </a>
+          </button>
         </div>
       </div>
     `;
-    const linkRead = card.querySelector(".read-link");
-    const titleLink = card.querySelector(".card-title a");
-    [linkRead, titleLink].forEach((el) => {
-      el.addEventListener("click", (e) => {
-        e.preventDefault();
-        stashArticle(item);
-        window.location.hash = `#/article/${item.id}`;
-      });
-    });
+    const btnTitle = card.querySelector(".card-title-btn");
+    const btnRead = card.querySelector(".read-link");
+    btnTitle.addEventListener("click", () => openArticle(item));
+    btnRead.addEventListener("click", () => openArticle(item));
     grid.appendChild(card);
   });
 }
@@ -370,12 +526,15 @@ function syncRoute() {
     return;
   }
   const id = decodeURIComponent(m[1]);
-  let item = findArticleById(id) || loadStashedArticle(id);
+  const item =
+    findArticleById(id) ||
+    loadStashedArticle(id) ||
+    loadPersistedArticle(id);
   if (item) {
     showDetailView(item);
   } else {
     hideDetailView();
-    setStatus("无法展示该条（请从列表重新进入）", false);
+    setStatus("无法展示该条（请先刷新列表）", false);
   }
 }
 
@@ -393,6 +552,7 @@ function escapeAttr(s) {
 
 function fillSkeletonPlates() {
   skeleton.replaceChildren();
+  skeleton.classList.remove("boot-skeleton");
   for (let i = 0; i < SKELETON_COUNT; i++) {
     const plate = document.createElement("div");
     plate.className = "sk";
@@ -419,6 +579,7 @@ function setLoading(on) {
   skeleton.classList.toggle("is-loading", on);
   if (on) {
     fillSkeletonPlates();
+    skeleton.removeAttribute("aria-hidden");
     errorEl.hidden = true;
     empty.hidden = true;
     grid.innerHTML = "";
@@ -455,7 +616,6 @@ async function refresh() {
   }
 }
 
-/* Tabs */
 document.querySelectorAll(".tab").forEach((btn) => {
   btn.addEventListener("click", () => {
     const cat = btn.dataset.category;
@@ -485,6 +645,7 @@ btnBack.addEventListener("click", () => {
 searchInput.addEventListener("input", () => {
   state.query = searchInput.value;
   render();
+  syncRoute();
   const filtered = state.items.filter(matchesFilter);
   empty.hidden = filtered.length > 0 || state.loading;
 });
@@ -515,4 +676,5 @@ btnTheme.addEventListener("click", () => {
 
 applyTheme(getTheme());
 
+syncRoute();
 refresh();

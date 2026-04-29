@@ -75,7 +75,15 @@
   </section>
 
   <main class="grid-wrap" id="main-list">
-    <div id="skeleton" class="skeleton-grid is-loading" hidden></div>
+    <!-- Static skeleton so first paint is never empty (before JS runs) -->
+    <div id="skeleton" class="skeleton-grid is-loading boot-skeleton" aria-hidden="false">
+      <div class="sk"><div class="sk-img"></div><div class="sk-line sk-line-lg"></div><div class="sk-line"></div><div class="sk-line sk-line-short"></div></div>
+      <div class="sk"><div class="sk-img"></div><div class="sk-line sk-line-lg"></div><div class="sk-line"></div><div class="sk-line sk-line-short"></div></div>
+      <div class="sk"><div class="sk-img"></div><div class="sk-line sk-line-lg"></div><div class="sk-line"></div><div class="sk-line sk-line-short"></div></div>
+      <div class="sk"><div class="sk-img"></div><div class="sk-line sk-line-lg"></div><div class="sk-line"></div><div class="sk-line sk-line-short"></div></div>
+      <div class="sk"><div class="sk-img"></div><div class="sk-line sk-line-lg"></div><div class="sk-line"></div><div class="sk-line sk-line-short"></div></div>
+      <div class="sk"><div class="sk-img"></div><div class="sk-line sk-line-lg"></div><div class="sk-line"></div><div class="sk-line sk-line-short"></div></div>
+    </div>
     <div id="grid" class="card-grid" aria-busy="false"></div>
     <div id="empty" class="empty-state" hidden>
       <p>暂无匹配条目，试试其它关键词或分类。</p>
