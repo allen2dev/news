@@ -4,9 +4,9 @@
 
 ## GitHub Pages 静态站点（Pulse）
 
-- 打开路径：`docs/index.html`（线上为站点根路径）。
-- 设计：深色极光背景、玻璃拟态卡片、多分类 Tab、搜索与刷新。
-- 数据：先经 **CORS 代理** 拉取 **原始 RSS/Atom** 并在浏览器内 `DOMParser` 解析（不依赖 [rss2json](https://rss2json.com/)，避免 422；代理列表含 `corsproxy.io`、`codetabs`、`thingproxy`，`allorigins` 仅作末位备选）。若仍无条目，再尝试 rss2json。公开代理在部分地区可能不稳定，长期可换自建反代。
+- 仅 **开发者** RSS：GitHub Blog、Dev.to、CSS-Tricks（`docs/js/app.js` 中 `FEEDS`）。
+- 新闻详情在 **模态框** 中展示；打开/关闭使用 **View Transitions API**（`document.startViewTransition` + 命名过渡 `modal-backdrop` / `modal-dialog`），不支持的浏览器会立即切换无动画。
+- 数据拉取：先 CORS 代理 + 本地解析 XML，失败再试 rss2json（见 `docs/js/app.js`）。
 
 ### 本地预览
 

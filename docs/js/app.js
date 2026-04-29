@@ -1,82 +1,20 @@
 /**
- * Pulse — static news aggregator for GitHub Pages
- * Primary: rss2json API; fallback: CORS proxy + DOMParser (fixes feeds rss2json rejects, e.g. Reuters).
+ * Pulse — developer RSS only; modal detail with View Transitions.
  */
 import DOMPurify from "https://cdn.jsdelivr.net/npm/dompurify@3.1.6/+esm";
 
 const RSS2JSON = "https://api.rss2json.com/v1/api.json";
 const DETAIL_KEY = "pulse-article";
 const STORAGE_PREFIX = "pulse-item:";
-const SKELETON_COUNT = 8;
 
-/** Optional raw RSS when rss2json fails (Reuters often fails there). */
-const FEEDS = {
-  tech: [
-    { source: "Hacker News", url: "https://news.ycombinator.com/rss" },
-    { source: "TechCrunch", url: "https://techcrunch.com/feed/" },
-    { source: "The Verge", url: "https://www.theverge.com/rss/index.xml" },
-  ],
-  world: [
-    { source: "BBC World", url: "https://feeds.bbci.co.uk/news/world/rss.xml" },
-    { source: "The Guardian World", url: "https://www.theguardian.com/world/rss" },
-    {
-      source: "Reuters World",
-      url: "https://feeds.reuters.com/Reuters/worldNews",
-    },
-    { source: "NPR News", url: "https://feeds.npr.org/1001/rss.xml" },
-  ],
-  dev: [
-    { source: "GitHub Blog", url: "https://github.blog/feed/" },
-    { source: "Dev.to", url: "https://dev.to/feed" },
-    { source: "CSS-Tricks", url: "https://css-tricks.com/feed/" },
-  ],
-};
+const FEEDS = [
+  { source: "GitHub Blog", url: "https://github.blog/feed/" },
+  { source: "Dev.to", url: "https://dev.to/feed" },
+  { source: "CSS-Tricks", url: "https://css-tricks.com/feed/" },
+];
 
 const CONTENT_NS = "http://purl.org/rss/1.0/modules/content/";
 
-let state = {
-  category: "all",
-  query: "",
-  items: [],
-  loading: false,
-};
-
-const $ = (sel) => document.querySelector(sel);
-const grid = $("#grid");
-const skeleton = $("#skeleton");
-const empty = $("#empty");
-const errorEl = $("#error");
-const errorMsg = $("#error-msg");
-const statusText = $("#status-text");
-const statusDot = $("#status-dot");
-const searchInput = $("#search");
-const mainList = $("#main-list");
-const siteHeader = document.querySelector(".site-header");
-const siteTabs = document.querySelector(".tabs");
-const siteStatus = document.querySelector(".status-bar");
-const siteFooter = $("#site-footer");
-const detailPanel = $("#detail-panel");
-const detailSource = $("#detail-source");
-const detailTime = $("#detail-time");
-const detailTitle = $("#detail-title");
-const detailBody = $("#detail-body");
-const detailFigure = $("#detail-figure");
-const detailImage = $("#detail-image");
-const detailFallback = $("#detail-fallback");
-const detailExternal = $("#detail-external");
-const btnBack = $("#btn-back");
-const btnTheme = $("#btn-theme");
-
-function rssUrl(feedUrl) {
-  return `${RSS2JSON}?rss_url=${encodeURIComponent(feedUrl)}`;
-}
-
-function parseRss2Json(data) {
-  if (data.status === "ok" && Array.isArray(data.items)) return data.items;
-  return null;
-}
-
-/** Order matters: rss2json often returns 422 for Reuters etc.; allorigins often 522 — try stable proxies first. */
 const PROXY_BUILDERS = [
   (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
   (u) =>
@@ -88,6 +26,45 @@ const PROXY_BUILDERS = [
 ];
 
 const FETCH_TIMEOUT_MS = 14_000;
+
+let state = {
+  query: "",
+  items: [],
+  loading: false,
+  modalOpen: false,
+  lastFocus: null,
+};
+
+const $ = (sel) => document.querySelector(sel);
+const grid = $("#grid");
+const empty = $("#empty");
+const errorEl = $("#error");
+const errorMsg = $("#error-msg");
+const statusText = $("#status-text");
+const statusDot = $("#status-dot");
+const searchInput = $("#search");
+const modalRoot = $("#modal-root");
+const modalBackdrop = $("#modal-backdrop");
+const detailDialog = $("#detail-dialog");
+const detailSource = $("#detail-source");
+const detailTime = $("#detail-time");
+const detailTitle = $("#detail-title");
+const detailBody = $("#detail-body");
+const detailFigure = $("#detail-figure");
+const detailImage = $("#detail-image");
+const detailFallback = $("#detail-fallback");
+const detailExternal = $("#detail-external");
+const btnClose = $("#btn-close");
+const btnTheme = $("#btn-theme");
+
+function rssUrl(feedUrl) {
+  return `${RSS2JSON}?rss_url=${encodeURIComponent(feedUrl)}`;
+}
+
+function parseRss2Json(data) {
+  if (data.status === "ok" && Array.isArray(data.items)) return data.items;
+  return null;
+}
 
 async function fetchWithTimeout(url) {
   const ctrl = new AbortController();
@@ -223,10 +200,6 @@ function parseFeedXml(xmlText, source) {
   return parseRssChannel(doc, source);
 }
 
-/**
- * Prefer raw XML through CORS proxies: rss2json often returns 422; allorigins can 522.
- * rss2json is only a secondary path when proxy+parse yields no items.
- */
 async function fetchFeed(feed) {
   try {
     const xmlText = await fetchTextViaProxies(feed.url);
@@ -324,7 +297,6 @@ function dedupe(items) {
   return out;
 }
 
-/** Persist article so refresh + deep link still opens in-app reader. */
 function persistArticle(item) {
   try {
     localStorage.setItem(STORAGE_PREFIX + item.id, JSON.stringify(item));
@@ -333,28 +305,9 @@ function persistArticle(item) {
   }
 }
 
-function loadPersistedArticle(id) {
-  try {
-    const raw = localStorage.getItem(STORAGE_PREFIX + id);
-    if (!raw) return null;
-    const o = JSON.parse(raw);
-    return o && o.id === id ? o : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-async function loadFeeds(category) {
-  const keys = category === "all" ? ["tech", "world", "dev"] : [category];
-  const tasks = [];
-  for (const k of keys) {
-    for (const f of FEEDS[k] || []) {
-      tasks.push(fetchFeed(f));
-    }
-  }
-  const chunks = await Promise.all(tasks);
-  let merged = chunks.flat();
-  merged = dedupe(merged);
+async function loadFeeds() {
+  const chunks = await Promise.all(FEEDS.map((f) => fetchFeed(f)));
+  let merged = dedupe(chunks.flat());
   merged.sort((a, b) => b.ts - a.ts);
   for (const it of merged.slice(0, 150)) {
     persistArticle(it);
@@ -431,10 +384,19 @@ function renderCardThumb(item) {
   return `<div class="card-thumb"><img src="${safeSrc}" alt="${alt}" loading="lazy" decoding="async" /></div>`;
 }
 
+function stashArticle(item) {
+  try {
+    sessionStorage.setItem(DETAIL_KEY, JSON.stringify(item));
+  } catch (e) {
+    console.warn("[Pulse] sessionStorage", e);
+  }
+}
+
 function openArticle(item) {
   stashArticle(item);
   persistArticle(item);
-  window.location.hash = `#/article/${item.id}`;
+  fillModal(item);
+  openModal();
 }
 
 function render() {
@@ -466,50 +428,17 @@ function render() {
         </div>
       </div>
     `;
-    const btnTitle = card.querySelector(".card-title-btn");
-    const btnRead = card.querySelector(".read-link");
-    btnTitle.addEventListener("click", () => openArticle(item));
-    btnRead.addEventListener("click", () => openArticle(item));
+    card.querySelector(".card-title-btn").addEventListener("click", () =>
+      openArticle(item)
+    );
+    card.querySelector(".read-link").addEventListener("click", () =>
+      openArticle(item)
+    );
     grid.appendChild(card);
   });
 }
 
-function stashArticle(item) {
-  try {
-    sessionStorage.setItem(
-      DETAIL_KEY,
-      JSON.stringify({
-        id: item.id,
-        source: item.source,
-        title: item.title,
-        link: item.link,
-        excerpt: item.excerpt,
-        thumb: item.thumb,
-        html: item.html,
-        ts: item.ts,
-      })
-    );
-  } catch (e) {
-    console.warn("[Pulse] sessionStorage full or disabled", e);
-  }
-}
-
-function loadStashedArticle(id) {
-  try {
-    const raw = sessionStorage.getItem(DETAIL_KEY);
-    if (!raw) return null;
-    const o = JSON.parse(raw);
-    if (o && o.id === id) return o;
-  } catch (e) {}
-  return null;
-}
-
-function findArticleById(id) {
-  return state.items.find((x) => x.id === id) || null;
-}
-
-function showDetailView(item) {
-  if (!item) return;
+function fillModal(item) {
   detailSource.textContent = item.source;
   detailTime.textContent = formatTime(item.ts);
   detailTime.setAttribute("datetime", new Date(item.ts).toISOString());
@@ -536,47 +465,6 @@ function showDetailView(item) {
     detailImage.removeAttribute("src");
     detailImage.alt = "";
   }
-
-  detailPanel.hidden = false;
-  detailPanel.setAttribute("aria-hidden", "false");
-  mainList.hidden = true;
-  if (siteHeader) siteHeader.hidden = true;
-  if (siteTabs) siteTabs.hidden = true;
-  if (siteStatus) siteStatus.hidden = true;
-  if (siteFooter) siteFooter.hidden = true;
-  document.title = `${item.title} · Pulse`;
-  window.scrollTo(0, 0);
-}
-
-function hideDetailView() {
-  detailPanel.hidden = true;
-  detailPanel.setAttribute("aria-hidden", "true");
-  mainList.hidden = false;
-  if (siteHeader) siteHeader.hidden = false;
-  if (siteTabs) siteTabs.hidden = false;
-  if (siteStatus) siteStatus.hidden = false;
-  if (siteFooter) siteFooter.hidden = false;
-  document.title = "Pulse · 新闻聚合";
-}
-
-function syncRoute() {
-  const h = window.location.hash || "";
-  const m = /^#\/article\/([^/?#]+)/.exec(h);
-  if (!m) {
-    hideDetailView();
-    return;
-  }
-  const id = decodeURIComponent(m[1]);
-  const item =
-    findArticleById(id) ||
-    loadStashedArticle(id) ||
-    loadPersistedArticle(id);
-  if (item) {
-    showDetailView(item);
-  } else {
-    hideDetailView();
-    setStatus("无法展示该条（请先刷新列表）", false);
-  }
 }
 
 function escapeHtml(s) {
@@ -591,36 +479,59 @@ function escapeAttr(s) {
   return escapeHtml(s).replace(/'/g, "&#39;");
 }
 
-function fillSkeletonPlates() {
-  skeleton.replaceChildren();
-  skeleton.classList.remove("boot-skeleton");
-  for (let i = 0; i < SKELETON_COUNT; i++) {
-    const plate = document.createElement("div");
-    plate.className = "sk";
-    const img = document.createElement("div");
-    img.className = "sk-img";
-    const bar1 = document.createElement("div");
-    bar1.className = "sk-line sk-line-lg";
-    const bar2 = document.createElement("div");
-    bar2.className = "sk-line";
-    const bar3 = document.createElement("div");
-    bar3.className = "sk-line sk-line-short";
-    plate.appendChild(img);
-    plate.appendChild(bar1);
-    plate.appendChild(bar2);
-    plate.appendChild(bar3);
-    skeleton.appendChild(plate);
+function vt(cb) {
+  if (document.startViewTransition) {
+    return document.startViewTransition(cb);
+  }
+  cb();
+  return { finished: Promise.resolve() };
+}
+
+function openModal() {
+  if (state.modalOpen) return;
+  state.lastFocus = document.activeElement;
+  if (document.startViewTransition) {
+    modalBackdrop.style.viewTransitionName = "modal-backdrop";
+    detailDialog.style.viewTransitionName = "modal-dialog";
+  }
+  const t = vt(() => {
+    modalRoot.classList.add("is-open");
+    modalRoot.removeAttribute("aria-hidden");
+    detailDialog.focus();
+  });
+  t.finished.finally(() => {
+    modalBackdrop.style.viewTransitionName = "";
+    detailDialog.style.viewTransitionName = "";
+  });
+  document.body.classList.add("modal-open");
+  state.modalOpen = true;
+}
+
+function closeModal() {
+  if (!state.modalOpen) return;
+  if (document.startViewTransition) {
+    modalBackdrop.style.viewTransitionName = "modal-backdrop";
+    detailDialog.style.viewTransitionName = "modal-dialog";
+  }
+  const t = vt(() => {
+    modalRoot.classList.remove("is-open");
+    modalRoot.setAttribute("aria-hidden", "true");
+  });
+  t.finished.finally(() => {
+    modalBackdrop.style.viewTransitionName = "";
+    detailDialog.style.viewTransitionName = "";
+  });
+  document.body.classList.remove("modal-open");
+  state.modalOpen = false;
+  if (state.lastFocus && typeof state.lastFocus.focus === "function") {
+    state.lastFocus.focus();
   }
 }
 
 function setLoading(on) {
   state.loading = on;
   grid.setAttribute("aria-busy", on ? "true" : "false");
-  skeleton.hidden = !on;
-  skeleton.classList.toggle("is-loading", on);
   if (on) {
-    fillSkeletonPlates();
-    skeleton.removeAttribute("aria-hidden");
     errorEl.hidden = true;
     empty.hidden = true;
     grid.innerHTML = "";
@@ -636,14 +547,13 @@ async function refresh() {
   setLoading(true);
   setStatus("正在拉取 RSS…", true);
   try {
-    const items = await loadFeeds(state.category);
+    const items = await loadFeeds();
     state.items = items;
     setStatus(
       `已聚合 ${items.length} 条 · ${new Date().toLocaleTimeString("zh-CN")}`,
       false
     );
     render();
-    syncRoute();
     if (items.length === 0) {
       empty.hidden = false;
       empty.querySelector("p").textContent = "未能获取条目，请稍后重试。";
@@ -657,41 +567,28 @@ async function refresh() {
   }
 }
 
-document.querySelectorAll(".tab").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const cat = btn.dataset.category;
-    state.category = cat;
-    document.querySelectorAll(".tab").forEach((b) => {
-      const active = b === btn;
-      b.classList.toggle("is-active", active);
-      b.setAttribute("aria-selected", active ? "true" : "false");
-    });
-    if (window.location.hash.startsWith("#/article")) {
-      window.location.hash = "";
-    }
-    refresh();
-  });
-});
-
 $("#btn-refresh").addEventListener("click", () => refresh());
 $("#btn-retry").addEventListener("click", () => {
   errorEl.hidden = true;
   refresh();
 });
 
-btnBack.addEventListener("click", () => {
-  window.location.hash = "";
+btnClose.addEventListener("click", () => closeModal());
+modalBackdrop.addEventListener("click", () => closeModal());
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && state.modalOpen) {
+    e.preventDefault();
+    closeModal();
+  }
 });
 
 searchInput.addEventListener("input", () => {
   state.query = searchInput.value;
   render();
-  syncRoute();
   const filtered = state.items.filter(matchesFilter);
   empty.hidden = filtered.length > 0 || state.loading;
 });
-
-window.addEventListener("hashchange", syncRoute);
 
 function getTheme() {
   return document.documentElement.getAttribute("data-theme") === "light"
@@ -717,5 +614,4 @@ btnTheme.addEventListener("click", () => {
 
 applyTheme(getTheme());
 
-syncRoute();
 refresh();
