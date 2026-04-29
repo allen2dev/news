@@ -1,8 +1,8 @@
 # news
 
-仓库包含：**Pulse**（`web/`）— 面向 GitHub Pages 的开发者 RSS 阅读器；以及可选的旧版 **Express + Angular** 示例（`server.js`、`public/`）。
+仓库包含：**News**（`web/`）— 面向 GitHub Pages 的开发者 RSS 阅读器；以及可选的旧版 **Express + Angular** 示例（`server.js`、`public/`）。
 
-## Pulse（Vite + React + TypeScript）
+## News（Vite + React + TypeScript）
 
 - **技术栈**：Vite 6、React 19、TypeScript、Tailwind CSS、Radix Dialog、Lucide、dOMPurify。
 - **功能**：开发者 RSS（GitHub Blog、Dev.to、CSS-Tricks）、搜索、明暗主题、卡片网格、**Radix 模态详情**；正文经 **DOMPurify** 白名单净化（含表格、多层级标题等，防 XSS）后 `dangerouslySetInnerHTML` 渲染。

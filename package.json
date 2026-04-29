@@ -1,7 +1,7 @@
 {
   "name": "news",
   "version": "2.0.0",
-  "description": "Pulse developer news reader + legacy Express demo",
+  "description": "News — developer RSS reader (GitHub Pages) + legacy Express demo",
   "private": true,
   "scripts": {
     "test": "echo \"No root tests\" && exit 0",
@@ -13,7 +13,7 @@
     "type": "git",
     "url": "git+https://github.com/zhiqiuyao/news.git"
   },
-  "keywords": ["news", "rss", "pulse"],
+  "keywords": ["news", "rss"],
   "author": "Thanos",
   "license": "MIT",
   "bugs": {

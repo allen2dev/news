@@ -7,7 +7,7 @@ export const FEEDS = [
 ] as const;
 
 const RSS2JSON = "https://api.rss2json.com/v1/api.json";
-export const STORAGE_PREFIX = "pulse-item:";
+export const STORAGE_PREFIX = "news-item:";
 
 const CONTENT_NS = "http://purl.org/rss/1.0/modules/content/";
 
@@ -211,7 +211,7 @@ export async function fetchFeed(feed: { source: string; url: string }) {
     const parsed = parseFeedXml(xmlText, feed.source);
     if (parsed.length > 0) return parsed;
   } catch (e1) {
-    console.warn(`[Pulse] raw XML via proxy failed: ${feed.source}`, e1);
+    console.warn(`[News] raw XML via proxy failed: ${feed.source}`, e1);
   }
 
   try {
@@ -222,9 +222,9 @@ export async function fetchFeed(feed: { source: string; url: string }) {
       return items.map((item) =>
         normalizeFromRaw(item as Record<string, unknown>, feed.source)
       );
-    console.warn(`[Pulse] rss2json no items: ${feed.source}`);
+    console.warn(`[News] rss2json no items: ${feed.source}`);
   } catch (e2) {
-    console.warn(`[Pulse] rss2json failed: ${feed.source}`, e2);
+    console.warn(`[News] rss2json failed: ${feed.source}`, e2);
   }
 
   return [];

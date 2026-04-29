@@ -18,7 +18,8 @@ import { cn } from "@/lib/utils";
 function useTheme() {
   const [dark, setDark] = useState(() => {
     if (typeof document === "undefined") return true;
-    const saved = localStorage.getItem("pulse-theme");
+    const saved =
+      localStorage.getItem("news-theme") ?? localStorage.getItem("pulse-theme");
     if (saved === "light") return false;
     if (saved === "dark") return true;
     return !window.matchMedia("(prefers-color-scheme: light)").matches;
@@ -26,7 +27,7 @@ function useTheme() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
-    localStorage.setItem("pulse-theme", dark ? "dark" : "light");
+    localStorage.setItem("news-theme", dark ? "dark" : "light");
   }, [dark]);
 
   return [dark, setDark] as const;
@@ -120,7 +121,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="bg-gradient-to-r from-foreground to-muted-foreground bg-clip-text text-3xl font-bold tracking-tight text-transparent">
-              Pulse
+              News
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               开发者资讯 · GitHub · Dev.to · CSS
