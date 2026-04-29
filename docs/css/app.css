@@ -11,9 +11,6 @@
   --accent-3: #fb7185;
   --radius: 16px;
   --shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
-  --sk-shine-1: rgba(255, 255, 255, 0.05);
-  --sk-shine-2: rgba(255, 255, 255, 0.18);
-  --sk-shine-3: rgba(255, 255, 255, 0.05);
   --logo-inner: linear-gradient(160deg, rgba(7, 8, 13, 0.9), rgba(18, 20, 32, 0.6));
   --aurora-op: 0.55;
   --noise-op: 0.04;
@@ -31,9 +28,6 @@
   --accent-2: #7c3aed;
   --accent-3: #e11d48;
   --shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
-  --sk-shine-1: rgba(15, 23, 42, 0.06);
-  --sk-shine-2: rgba(15, 23, 42, 0.14);
-  --sk-shine-3: rgba(15, 23, 42, 0.06);
   --logo-inner: linear-gradient(160deg, rgba(255, 255, 255, 0.95), rgba(240, 242, 248, 0.85));
   --aurora-op: 0.35;
   --noise-op: 0.03;
@@ -130,7 +124,6 @@ body {
 }
 
 .site-header,
-.tabs,
 .status-bar,
 .grid-wrap,
 .site-footer {
@@ -301,43 +294,6 @@ body {
 
 [data-theme="light"] .btn-back {
   background: rgba(255, 255, 255, 0.9);
-}
-
-.tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding-bottom: 1rem;
-}
-
-.tab {
-  padding: 0.45rem 1rem;
-  font-family: inherit;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--muted);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  cursor: pointer;
-  transition: color 0.2s, background 0.2s, border-color 0.2s, box-shadow 0.2s;
-}
-
-.tab:hover {
-  color: var(--text);
-  border-color: rgba(110, 231, 255, 0.3);
-}
-
-.tab.is-active {
-  color: var(--bg-deep);
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  border-color: transparent;
-  box-shadow: 0 4px 20px rgba(167, 139, 250, 0.35);
-}
-
-[data-theme="light"] .tab.is-active {
-  color: #fff;
-  box-shadow: 0 4px 16px rgba(124, 58, 237, 0.25);
 }
 
 .status-bar {
@@ -553,81 +509,6 @@ body {
   transform: translateX(4px);
 }
 
-.skeleton-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
-  gap: 1rem;
-}
-
-.skeleton-grid.is-loading {
-  min-height: 240px;
-}
-
-.sk {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1rem;
-  min-height: 200px;
-  border-radius: var(--radius);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-}
-
-.skeleton-grid.boot-skeleton {
-  min-height: min(70vh, 560px);
-}
-
-.sk-img {
-  width: 100%;
-  height: 96px;
-  border-radius: 10px;
-  background: linear-gradient(
-    90deg,
-    var(--sk-shine-1) 0%,
-    var(--sk-shine-2) 50%,
-    var(--sk-shine-3) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.2s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-.sk-line {
-  height: 12px;
-  border-radius: 6px;
-  background: linear-gradient(
-    90deg,
-    var(--sk-shine-1) 0%,
-    var(--sk-shine-2) 50%,
-    var(--sk-shine-3) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.2s ease-in-out infinite;
-}
-
-.sk-line-lg {
-  width: 88%;
-}
-
-.sk-line-short {
-  width: 42%;
-}
-
-.sk-line:nth-child(3) {
-  animation-delay: 0.08s;
-}
-
-.sk-line:nth-child(4) {
-  animation-delay: 0.15s;
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
 .empty-state,
 .error-state {
   text-align: center;
@@ -650,16 +531,124 @@ body {
   margin: 0;
 }
 
-/* Article detail (in-app) */
-.detail-panel {
-  position: relative;
-  z-index: 2;
-  max-width: 820px;
-  margin: 0 auto;
-  padding: clamp(1rem, 4vw, 2rem) clamp(1rem, 4vw, 2rem) 3rem;
-  min-height: 60vh;
+/* Modal + View Transitions */
+body.modal-open {
+  overflow: hidden;
 }
 
+.modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: clamp(0.75rem, 3vw, 1.5rem);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.modal-root.is-open {
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+}
+
+.modal-root.is-open .modal-backdrop {
+  opacity: 1;
+}
+
+.modal-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 640px);
+  max-height: min(88vh, 900px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  transform: translateY(16px) scale(0.96);
+  opacity: 0;
+  outline: none;
+}
+
+.modal-root.is-open .modal-dialog {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.modal-dialog .detail-inner {
+  overflow-y: auto;
+  max-height: min(88vh, 900px);
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-close {
+  margin-bottom: 0.5rem;
+}
+
+::view-transition-old(modal-backdrop) {
+  animation-name: vt-fade-out;
+  animation-duration: 0.32s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-new(modal-backdrop) {
+  animation-name: vt-fade-in;
+  animation-duration: 0.32s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-old(modal-dialog) {
+  animation-name: vt-dialog-out;
+  animation-duration: 0.38s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-new(modal-dialog) {
+  animation-name: vt-dialog-in;
+  animation-duration: 0.38s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes vt-fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes vt-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.94);
+  }
+}
+
+@keyframes vt-dialog-out {
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(modal-backdrop),
+  ::view-transition-new(modal-backdrop),
+  ::view-transition-old(modal-dialog),
+  ::view-transition-new(modal-dialog) {
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* Article detail card inside modal */
 .detail-inner {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -758,8 +747,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .blob,
   .card,
-  .sk-img,
-  .sk-line,
   .dot.is-live {
     animation: none;
   }

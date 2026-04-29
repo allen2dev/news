@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Pulse — 多源新闻聚合，实时刷新" />
-  <title>Pulse · 新闻聚合</title>
+  <meta name="description" content="Pulse — 开发者资讯聚合" />
+  <title>Pulse · 开发者</title>
   <script>
     (function () {
       try {
@@ -33,7 +33,7 @@
       <span class="logo-mark" aria-hidden="true"></span>
       <div>
         <h1 class="logo">Pulse</h1>
-        <p class="tagline">多源实时聚合 · 一键刷新全网头条</p>
+        <p class="tagline">开发者频道 · GitHub / Dev.to / CSS 前沿</p>
       </div>
     </div>
     <div class="header-actions">
@@ -62,31 +62,15 @@
     </div>
   </header>
 
-  <nav class="tabs" role="tablist" aria-label="分类">
-    <button type="button" class="tab is-active" role="tab" aria-selected="true" data-category="all">全部</button>
-    <button type="button" class="tab" role="tab" aria-selected="false" data-category="tech">科技</button>
-    <button type="button" class="tab" role="tab" aria-selected="false" data-category="world">国际</button>
-    <button type="button" class="tab" role="tab" aria-selected="false" data-category="dev">开发者</button>
-  </nav>
-
   <section class="status-bar" aria-live="polite">
     <span id="status-text">准备就绪</span>
     <span class="dot" id="status-dot"></span>
   </section>
 
   <main class="grid-wrap" id="main-list">
-    <!-- Static skeleton so first paint is never empty (before JS runs) -->
-    <div id="skeleton" class="skeleton-grid is-loading boot-skeleton" aria-hidden="false">
-      <div class="sk"><div class="sk-img"></div><div class="sk-line sk-line-lg"></div><div class="sk-line"></div><div class="sk-line sk-line-short"></div></div>
-      <div class="sk"><div class="sk-img"></div><div class="sk-line sk-line-lg"></div><div class="sk-line"></div><div class="sk-line sk-line-short"></div></div>
-      <div class="sk"><div class="sk-img"></div><div class="sk-line sk-line-lg"></div><div class="sk-line"></div><div class="sk-line sk-line-short"></div></div>
-      <div class="sk"><div class="sk-img"></div><div class="sk-line sk-line-lg"></div><div class="sk-line"></div><div class="sk-line sk-line-short"></div></div>
-      <div class="sk"><div class="sk-img"></div><div class="sk-line sk-line-lg"></div><div class="sk-line"></div><div class="sk-line sk-line-short"></div></div>
-      <div class="sk"><div class="sk-img"></div><div class="sk-line sk-line-lg"></div><div class="sk-line"></div><div class="sk-line sk-line-short"></div></div>
-    </div>
     <div id="grid" class="card-grid" aria-busy="false"></div>
     <div id="empty" class="empty-state" hidden>
-      <p>暂无匹配条目，试试其它关键词或分类。</p>
+      <p>暂无匹配条目，试试其它关键词。</p>
     </div>
     <div id="error" class="error-state" hidden>
       <p id="error-msg">加载失败</p>
@@ -94,32 +78,45 @@
     </div>
   </main>
 
-  <article id="detail-panel" class="detail-panel" hidden aria-hidden="true">
-    <div class="detail-inner">
-      <header class="detail-header">
-        <button type="button" class="btn btn-back" id="btn-back">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          返回列表
-        </button>
-        <div class="detail-meta">
-          <span class="source-pill" id="detail-source"></span>
-          <time class="time" id="detail-time"></time>
-        </div>
-        <h1 class="detail-title" id="detail-title"></h1>
-      </header>
-      <figure class="detail-figure" id="detail-figure" hidden>
-        <img id="detail-image" src="" alt="" loading="lazy" decoding="async" />
-      </figure>
-      <div class="detail-body prose" id="detail-body"></div>
-      <p class="detail-fallback" id="detail-fallback" hidden>暂无正文摘要，请前往原文阅读完整报道。</p>
-      <footer class="detail-footer">
-        <a class="btn btn-primary" id="detail-external" href="#" target="_blank" rel="noopener noreferrer">在浏览器中打开原文</a>
-      </footer>
+  <div
+    id="modal-root"
+    class="modal-root"
+    aria-hidden="true"
+  >
+    <div class="modal-backdrop" id="modal-backdrop" tabindex="-1" aria-hidden="true"></div>
+    <div
+      class="modal-dialog"
+      id="detail-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="detail-title"
+      tabindex="-1"
+    >
+      <div class="detail-inner">
+        <header class="detail-header">
+          <button type="button" class="modal-close btn btn-back" id="btn-close" aria-label="关闭">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+          <div class="detail-meta">
+            <span class="source-pill" id="detail-source"></span>
+            <time class="time" id="detail-time"></time>
+          </div>
+          <h1 class="detail-title" id="detail-title"></h1>
+        </header>
+        <figure class="detail-figure" id="detail-figure" hidden>
+          <img id="detail-image" src="" alt="" loading="lazy" decoding="async" />
+        </figure>
+        <div class="detail-body prose" id="detail-body"></div>
+        <p class="detail-fallback" id="detail-fallback" hidden>暂无正文摘要，请前往原文阅读完整报道。</p>
+        <footer class="detail-footer">
+          <a class="btn btn-primary" id="detail-external" href="#" target="_blank" rel="noopener noreferrer">在浏览器中打开原文</a>
+        </footer>
+      </div>
     </div>
-  </article>
+  </div>
 
   <footer class="site-footer" id="site-footer">
-    <p>数据来源为公开 RSS，摘要与链接归各媒体所有 · 仅供个人阅读</p>
+    <p>数据来源为公开 RSS · 仅供个人阅读</p>
   </footer>
 
   <script src="./js/app.js" type="module"></script>
