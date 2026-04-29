@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
-import { flushSync } from "react-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Loader2,
   Moon,
@@ -14,7 +13,6 @@ import {
   persistArticle,
 } from "@/lib/rss";
 import type { RssItem } from "@/lib/types";
-import { runViewTransition } from "@/lib/viewTransition";
 import { cn } from "@/lib/utils";
 
 function useTheme() {
@@ -43,6 +41,13 @@ export default function App() {
   const [status, setStatus] = useState("");
   const [selected, setSelected] = useState<RssItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const closeClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (closeClearRef.current) clearTimeout(closeClearRef.current);
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -77,23 +82,24 @@ export default function App() {
   });
 
   const openArticle = useCallback((item: RssItem) => {
+    if (closeClearRef.current) {
+      clearTimeout(closeClearRef.current);
+      closeClearRef.current = null;
+    }
     persistArticle(item);
-    void runViewTransition(() => {
-      flushSync(() => {
-        setSelected(item);
-        setDialogOpen(true);
-      });
-    });
+    setSelected(item);
+    setDialogOpen(true);
   }, []);
 
   const onDialogOpenChange = useCallback((open: boolean) => {
-    if (open) return;
-    void runViewTransition(() => {
-      flushSync(() => {
-        setDialogOpen(false);
+    setDialogOpen(open);
+    if (!open) {
+      if (closeClearRef.current) clearTimeout(closeClearRef.current);
+      closeClearRef.current = setTimeout(() => {
         setSelected(null);
-      });
-    });
+        closeClearRef.current = null;
+      }, 320);
+    }
   }, []);
 
   return (

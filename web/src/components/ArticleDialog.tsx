@@ -48,7 +48,6 @@ export function ArticleDialog({ item, open, onOpenChange }: Props) {
       <Dialog.Portal>
         <Dialog.Overlay
           className="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-          style={{ viewTransitionName: "article-backdrop" }}
         />
         <Dialog.Content
           className={cn(
@@ -57,7 +56,6 @@ export function ArticleDialog({ item, open, onOpenChange }: Props) {
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
           )}
-          style={{ viewTransitionName: "article-panel" }}
           aria-describedby={descId}
         >
           <div className="flex max-h-[min(88vh,52rem)] flex-col">
@@ -104,7 +102,8 @@ export function ArticleDialog({ item, open, onOpenChange }: Props) {
                   "prose prose-sm max-w-none dark:prose-invert",
                   "prose-headings:scroll-mt-20 prose-p:leading-relaxed",
                   "prose-a:text-[hsl(var(--accent))] prose-a:underline prose-a:underline-offset-2",
-                  "prose-img:rounded-lg prose-pre:bg-muted"
+                  "prose-img:rounded-lg prose-pre:bg-muted",
+                  "prose-table:text-sm prose-th:border prose-td:border prose-table:border-border"
                 )}
                 dangerouslySetInnerHTML={{ __html: cleaned }}
               />
