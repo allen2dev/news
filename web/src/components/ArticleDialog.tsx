@@ -51,7 +51,7 @@ export function ArticleDialog({ item, open, onOpenChange }: Props) {
         />
         <Dialog.Content
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-[min(100%-1.5rem,42rem)] max-h-[min(88vh,52rem)] -translate-x-1/2 -translate-y-1/2",
+            "fixed left-1/2 top-1/2 z-50 w-[min(100%-1.5rem,48rem)] max-h-[min(88vh,52rem)] -translate-x-1/2 -translate-y-1/2",
             "overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl outline-none",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
@@ -99,11 +99,20 @@ export function ArticleDialog({ item, open, onOpenChange }: Props) {
               <div
                 ref={bodyRef}
                 className={cn(
-                  "prose prose-sm max-w-none dark:prose-invert",
-                  "prose-headings:scroll-mt-20 prose-p:leading-relaxed",
-                  "prose-a:text-[hsl(var(--accent))] prose-a:underline prose-a:underline-offset-2",
-                  "prose-img:rounded-lg prose-pre:bg-muted",
-                  "prose-table:text-sm prose-th:border prose-td:border prose-table:border-border"
+                  "article-body prose prose-base max-w-none dark:prose-invert",
+                  "prose-headings:scroll-mt-20 prose-headings:font-semibold",
+                  "prose-p:leading-relaxed prose-li:leading-relaxed",
+                  "prose-a:text-[hsl(var(--accent))] prose-a:underline prose-a:underline-offset-2 prose-a:break-words",
+                  "prose-img:rounded-lg",
+                  "[&_.highlight]:my-4 [&_.highlight]:overflow-x-auto [&_.highlight]:rounded-xl [&_.highlight]:border [&_.highlight]:border-border [&_.highlight]:bg-muted/40 [&_.highlight]:p-1",
+                  "[&_.js-code-highlight]:my-4 [&_.js-code-highlight]:overflow-x-auto [&_.js-code-highlight]:rounded-xl [&_.js-code-highlight]:border [&_.js-code-highlight]:border-border [&_.js-code-highlight]:bg-muted/40",
+                  "prose-pre:my-4 prose-pre:max-h-[min(50vh,28rem)] prose-pre:overflow-auto prose-pre:rounded-xl prose-pre:border prose-pre:border-border prose-pre:bg-muted/80 prose-pre:p-4 prose-pre:text-[13px] prose-pre:leading-relaxed",
+                  "prose-code:before:content-none prose-code:after:content-none",
+                  "prose-pre:prose-code:bg-transparent prose-pre:prose-code:p-0 prose-pre:prose-code:text-inherit",
+                  "prose-code:rounded-md prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:font-mono prose-code:text-[0.9em]",
+                  "prose-table:block prose-table:max-w-full prose-table:overflow-x-auto prose-table:text-sm",
+                  "prose-th:border prose-td:border prose-table:border-border prose-th:px-3 prose-td:px-3 prose-th:py-2 prose-td:py-2",
+                  "prose-blockquote:border-l-[hsl(var(--accent))]"
                 )}
                 dangerouslySetInnerHTML={{ __html: cleaned }}
               />

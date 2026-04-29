@@ -59,7 +59,6 @@ const CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
     "colgroup",
     "col",
   ],
-  /** Keep layout/classes from feeds so prose + sanitization work together */
   ALLOWED_ATTR: [
     "href",
     "title",
@@ -106,7 +105,50 @@ const CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
   ADD_ATTR: ["target", "rel"],
 };
 
+/**
+ * RSS / JSON APIs sometimes return HTML that was entity-encoded once or twice,
+ * so the UI shows literal "&lt;p&gt;" instead of paragraphs. Decode until stable.
+ */
+export function decodeRepeatedEntities(html: string): string {
+  if (!html || typeof document === "undefined") return html;
+  const textarea = document.createElement("textarea");
+  let cur = html;
+  const max = 6;
+  for (let i = 0; i < max; i++) {
+    textarea.innerHTML = cur;
+    const next = textarea.value;
+    if (next === cur) break;
+    cur = next;
+  }
+  return cur;
+}
+
+/** True if content looks like escaped markup (tags visible as text). */
+function looksLikeEscapedHtml(s: string): boolean {
+  const t = s.trim().slice(0, 500);
+  return /&lt;[a-z][^>]*&gt;/i.test(t) || /^&lt;!/.test(t);
+}
+
 export function sanitizeArticleHtml(html: string) {
   if (!html) return "";
-  return DOMPurify.sanitize(html, CONFIG);
+  let input = html.trim();
+
+  if (looksLikeEscapedHtml(input)) {
+    input = decodeRepeatedEntities(input);
+  }
+
+  const sanitized = DOMPurify.sanitize(input, CONFIG);
+
+  /* Last resort: if DOMPurify stripped everything because input was still escaped */
+  if (
+    sanitized.replace(/<[^>]+>/g, "").trim().length < 20 &&
+    looksLikeEscapedHtml(input)
+  ) {
+    const again = decodeRepeatedEntities(input);
+    if (again !== input) {
+      return DOMPurify.sanitize(again, CONFIG);
+    }
+  }
+
+  return sanitized;
 }
