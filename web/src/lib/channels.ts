@@ -1,6 +1,6 @@
 /**
- * Curated RSS channels — major publishers with stable, standards-compliant feeds.
- * URLs are official feed endpoints (BBC, Guardian, NPR, etc.).
+ * RSS channels — mixed domestic / HK / regional sources for better reach from mainland China,
+ * plus a few international feeds where domestic equivalents lack stable RSS.
  */
 export type ChannelId = "all" | "dev" | "tech" | "world" | "business" | "science";
 
@@ -16,36 +16,33 @@ export const CHANNEL_ORDER: ChannelId[] = [
 const DEV = [
   { source: "GitHub Blog", url: "https://github.blog/feed/" },
   { source: "Dev.to", url: "https://dev.to/feed" },
-  { source: "CSS-Tricks", url: "https://css-tricks.com/feed/" },
+  { source: "阮一峰的网络日志", url: "https://www.ruanyifeng.com/blog/atom.xml" },
 ] as const;
 
 const TECH = [
-  { source: "Hacker News", url: "https://news.ycombinator.com/rss" },
-  { source: "The Verge", url: "https://www.theverge.com/rss/index.xml" },
-  { source: "Ars Technica", url: "https://feeds.arstechnica.com/arstechnica/index" },
+  { source: "Solidot", url: "https://www.solidot.org/index.rss" },
+  { source: "IT之家", url: "https://www.ithome.com/rss/" },
+  { source: "cnBeta", url: "https://www.cnbeta.com/backend.php" },
 ] as const;
 
 const WORLD = [
-  { source: "BBC News — World", url: "https://feeds.bbci.co.uk/news/world/rss.xml" },
+  { source: "中新网", url: "https://www.chinanews.com.cn/rss/scroll-news.xml" },
+  { source: "南华早报 SCMP", url: "https://www.scmp.com/rss/2/feed" },
   { source: "The Guardian — World", url: "https://www.theguardian.com/world/rss" },
-  { source: "NPR News", url: "https://feeds.npr.org/1001/rss.xml" },
 ] as const;
 
 const BUSINESS = [
-  { source: "BBC News — Business", url: "https://feeds.bbci.co.uk/news/business/rss.xml" },
-  { source: "The Guardian — Business", url: "https://www.theguardian.com/uk/business/rss" },
-  { source: "Reuters — Business", url: "https://feeds.reuters.com/reuters/businessNews" },
+  { source: "36氪", url: "https://36kr.com/feed" },
+  { source: "第一财经", url: "https://www.yicai.com/rss.xml" },
+  { source: "新华网 — Business", url: "http://www.xinhuanet.com/english/rss/business.xml" },
 ] as const;
 
 const SCIENCE = [
-  {
-    source: "BBC News — Science",
-    url: "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
-  },
   { source: "Nature — News", url: "https://www.nature.com/nature.rss" },
+  { source: "中科院之声", url: "http://www.cas.cn/xw/kxyw/rss.xml" },
   {
-    source: "Scientific American",
-    url: "https://rss.sciam.com/ScientificAmerican-Global",
+    source: "BBC — Science & Environment",
+    url: "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
   },
 ] as const;
 

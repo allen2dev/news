@@ -5,8 +5,8 @@
 ## News（Vite + React + TypeScript）
 
 - **技术栈**：Vite 6、React 19、TypeScript、Tailwind CSS、Radix Dialog、Lucide、dOMPurify。
-- **功能**：多频道（全部 / 开发者 / 科技 / 国际 / 商业 / 科学）可信 RSS、频道切换、搜索、明暗主题、卡片网格、**Radix 模态详情**；正文经 **DOMPurify** 净化后渲染。频道与 feed 列表见 `web/src/lib/channels.ts`。
-- **数据**：先经 CORS 代理拉取 XML 并解析，失败再试 rss2json（见 `web/src/lib/rss.ts`）。
+- **功能**：多频道、**SWR 按频道缓存**（切换回已访问频道先展示上次的列表，后台刷新）、搜索、明暗主题、Radix 模态。频道与源见 `web/src/lib/channels.ts`（含国内/港等更易访问的 RSS）。
+- **数据**：CORS 代理 + XML 解析，失败再 rss2json；SWR `dedupingInterval` 5 分钟、**`keepPreviousData`** 切频道不闪空。
 
 ### 本地开发
 

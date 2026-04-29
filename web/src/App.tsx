@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import useSWR from "swr";
 import {
   Loader2,
   Moon,
@@ -36,13 +37,11 @@ function useTheme() {
   return [dark, setDark] as const;
 }
 
+const CHANNEL_FETCHER = async (ch: ChannelId) => loadFeedsForChannel(ch);
+
 export default function App() {
   const [dark, setDark] = useTheme();
-  const [items, setItems] = useState<RssItem[]>([]);
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState("");
   const [selected, setSelected] = useState<RssItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [channel, setChannel] = useState<ChannelId>(() => {
@@ -61,6 +60,25 @@ export default function App() {
     return "all";
   });
   const closeClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const {
+    data,
+    error,
+    isLoading,
+    isValidating,
+    mutate,
+  } = useSWR(channel, CHANNEL_FETCHER, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: true,
+    dedupingInterval: 5 * 60 * 1000,
+    focusThrottleInterval: 60 * 1000,
+    keepPreviousData: true,
+  });
+
+  const items = data ?? [];
+  const loadingBlocking = isLoading && data === undefined;
+  const errMsg =
+    error instanceof Error ? error.message : error ? String(error) : null;
 
   useEffect(() => {
     localStorage.setItem("news-channel", channel);
@@ -81,27 +99,11 @@ export default function App() {
     };
   }, []);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setStatus("正在拉取 RSS…");
-    try {
-      const list = await loadFeedsForChannel(channel);
-      setItems(list);
-      setStatus(
-        `「${CHANNEL_LABELS[channel]}」已聚合 ${list.length} 条 · ${new Date().toLocaleTimeString("zh-CN")}`
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "加载失败");
-      setStatus("");
-    } finally {
-      setLoading(false);
-    }
-  }, [channel]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  const statusLine = errMsg
+    ? ""
+    : items.length > 0 || data !== undefined
+      ? `「${CHANNEL_LABELS[channel]}」${items.length} 条${isValidating ? " · 后台更新中…" : ""} · ${new Date().toLocaleTimeString("zh-CN")}`
+      : "";
 
   const filtered = items.filter((it) => {
     const q = query.trim().toLowerCase();
@@ -134,9 +136,12 @@ export default function App() {
     }
   }, []);
 
+  const handleRefresh = useCallback(() => {
+    void mutate();
+  }, [mutate]);
+
   return (
     <div className="relative min-h-dvh">
-      {/* ambient */}
       <div
         className="pointer-events-none fixed inset-0 overflow-hidden"
         aria-hidden
@@ -155,7 +160,7 @@ export default function App() {
               News
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              多频道 RSS 聚合
+              多频道 RSS · 切换频道即时展示缓存
             </p>
           </div>
         </div>
@@ -185,12 +190,12 @@ export default function App() {
           </label>
           <button
             type="button"
-            onClick={() => void refresh()}
-            disabled={loading}
+            onClick={() => void handleRefresh()}
+            disabled={isValidating && items.length === 0}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold transition hover:bg-muted disabled:opacity-50"
           >
             <RefreshCw
-              className={cn("h-4 w-4", loading && "animate-spin")}
+              className={cn("h-4 w-4", isValidating && "animate-spin")}
             />
             刷新
           </button>
@@ -222,16 +227,16 @@ export default function App() {
       </nav>
 
       <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <p className="font-mono text-xs text-muted-foreground">{status}</p>
+        <p className="font-mono text-xs text-muted-foreground">{statusLine}</p>
       </div>
 
       <main className="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
-        {error && (
+        {errMsg && (
           <div className="mb-8 rounded-2xl border border-red-500/20 bg-red-500/5 px-6 py-8 text-center dark:border-red-400/20">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <p className="text-sm text-red-600 dark:text-red-400">{errMsg}</p>
             <button
               type="button"
-              onClick={() => void refresh()}
+              onClick={() => void handleRefresh()}
               className="mt-4 rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background"
             >
               重试
@@ -239,20 +244,20 @@ export default function App() {
           </div>
         )}
 
-        {loading && !error && (
+        {loadingBlocking && !errMsg && (
           <div className="flex flex-col items-center justify-center py-24">
             <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-            <p className="mt-4 text-sm text-muted-foreground">加载资讯…</p>
+            <p className="mt-4 text-sm text-muted-foreground">首次加载该频道…</p>
           </div>
         )}
 
-        {!loading && !error && filtered.length === 0 && (
+        {!loadingBlocking && !errMsg && filtered.length === 0 && (
           <p className="py-16 text-center text-muted-foreground">
             暂无条目，请稍后重试或调整搜索。
           </p>
         )}
 
-        {!loading && filtered.length > 0 && (
+        {!loadingBlocking && filtered.length > 0 && (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((item, i) => (
               <li key={item.id} style={{ animationDelay: `${i * 40}ms` }}>
