@@ -1,10 +1,9 @@
+import type { ChannelId } from "./channels";
+import { getFeedsForChannel } from "./channels";
 import type { RssItem } from "./types";
 
-export const FEEDS = [
-  { source: "GitHub Blog", url: "https://github.blog/feed/" },
-  { source: "Dev.to", url: "https://dev.to/feed" },
-  { source: "CSS-Tricks", url: "https://css-tricks.com/feed/" },
-] as const;
+export type { ChannelId };
+export { CHANNEL_LABELS, CHANNEL_ORDER, getFeedsForChannel } from "./channels";
 
 const RSS2JSON = "https://api.rss2json.com/v1/api.json";
 export const STORAGE_PREFIX = "news-item:";
@@ -250,11 +249,12 @@ export function persistArticle(item: RssItem) {
   }
 }
 
-export async function loadAllFeeds(): Promise<RssItem[]> {
-  const chunks = await Promise.all(FEEDS.map((f) => fetchFeed(f)));
+export async function loadFeedsForChannel(channelId: ChannelId): Promise<RssItem[]> {
+  const feeds = getFeedsForChannel(channelId);
+  const chunks = await Promise.all(feeds.map((f) => fetchFeed(f)));
   let merged = dedupe(chunks.flat());
   merged.sort((a, b) => b.ts - a.ts);
-  for (const it of merged.slice(0, 150)) {
+  for (const it of merged.slice(0, 200)) {
     persistArticle(it);
   }
   return merged;

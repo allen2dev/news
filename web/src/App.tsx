@@ -9,7 +9,10 @@ import {
 } from "lucide-react";
 import { ArticleDialog } from "@/components/ArticleDialog";
 import {
-  loadAllFeeds,
+  type ChannelId,
+  CHANNEL_LABELS,
+  CHANNEL_ORDER,
+  loadFeedsForChannel,
   persistArticle,
 } from "@/lib/rss";
 import type { RssItem } from "@/lib/types";
@@ -42,7 +45,35 @@ export default function App() {
   const [status, setStatus] = useState("");
   const [selected, setSelected] = useState<RssItem | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [channel, setChannel] = useState<ChannelId>(() => {
+    if (typeof window === "undefined") return "all";
+    const saved = localStorage.getItem("news-channel");
+    if (
+      saved === "all" ||
+      saved === "dev" ||
+      saved === "tech" ||
+      saved === "world" ||
+      saved === "business" ||
+      saved === "science"
+    ) {
+      return saved;
+    }
+    return "all";
+  });
   const closeClearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem("news-channel", channel);
+  }, [channel]);
+
+  useEffect(() => {
+    setDialogOpen(false);
+    setSelected(null);
+    if (closeClearRef.current) {
+      clearTimeout(closeClearRef.current);
+      closeClearRef.current = null;
+    }
+  }, [channel]);
 
   useEffect(() => {
     return () => {
@@ -55,10 +86,10 @@ export default function App() {
     setError(null);
     setStatus("正在拉取 RSS…");
     try {
-      const list = await loadAllFeeds();
+      const list = await loadFeedsForChannel(channel);
       setItems(list);
       setStatus(
-        `已聚合 ${list.length} 条 · ${new Date().toLocaleTimeString("zh-CN")}`
+        `「${CHANNEL_LABELS[channel]}」已聚合 ${list.length} 条 · ${new Date().toLocaleTimeString("zh-CN")}`
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "加载失败");
@@ -66,7 +97,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [channel]);
 
   useEffect(() => {
     void refresh();
@@ -124,7 +155,7 @@ export default function App() {
               News
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              开发者资讯 · GitHub · Dev.to · CSS
+              多频道 RSS 聚合
             </p>
           </div>
         </div>
@@ -165,6 +196,30 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      <nav
+        className="relative z-10 mx-auto max-w-6xl px-4 pb-4 sm:px-6 lg:px-8"
+        aria-label="频道"
+      >
+        <div className="flex flex-wrap gap-2">
+          {CHANNEL_ORDER.map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setChannel(id)}
+              className={cn(
+                "rounded-full border px-3.5 py-1.5 text-sm font-medium transition",
+                channel === id
+                  ? "border-transparent bg-foreground text-background shadow-sm"
+                  : "border-border bg-card/80 text-muted-foreground hover:border-[hsl(var(--ring)/0.35)] hover:text-foreground"
+              )}
+              aria-pressed={channel === id}
+            >
+              {CHANNEL_LABELS[id]}
+            </button>
+          ))}
+        </div>
+      </nav>
 
       <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <p className="font-mono text-xs text-muted-foreground">{status}</p>
